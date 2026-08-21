@@ -26,35 +26,41 @@
         .btn:active { background: rgba(255,255,255,0.5); }
         
         /* Cụm di chuyển trái */
-        #btn-w { left: 80px; bottom: 80px; }
-        #btn-s { left: 80px; bottom: 20px; }
-        #btn-a { left: 20px; bottom: 20px; }
-        #btn-d { left: 140px; bottom: 20px; }
-        
-        /* Cụm hành động phải */
-        #btn-jump { right: 20px; bottom: 80px; width: 60px; height: 60px; font-size: 24px; }
-        #btn-break { right: 90px; bottom: 20px; width: 60px; height: 60px; font-size: 24px; background: rgba(255, 100, 100, 0.4); }
-        
-        #touch-look-zone { position: absolute; top: 0; right: 0; width: 50%; height: 100%; z-index: 12; }
-    </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/PointerLockControls.js"></script>
-</head>
-<body>
+       // 3. Di chuyển người chơi
+            if (controls.isLocked || isMobile) {
+                velocity.x -= velocity.x * 10.0 * delta;
+                velocity.z -= velocity.z * 10.0 * delta;
+                velocity.y -= 80.0 * delta; // Trọng lực
 
-    <div id="crosshair">✚</div>
+                // SỬA LẠI DẤU Ở ĐÂY: Tiến là trừ Z, Lùi là cộng Z
+                direction.z = Number(moveBackward) - Number(moveForward); 
+                direction.x = Number(moveRight) - Number(moveLeft);
+                direction.normalize();
 
-    <div id="ui">
-        Máu: <div class="bar-bg"><div id="hp-bar"></div></div>
-        Thức ăn: <div class="bar-bg"><div id="food-bar"></div></div>
-    </div>
+                const speed = 150.0;
+                // Cộng dồn gia tốc thay vì trừ
+                if (moveForward || moveBackward) velocity.z += direction.z * speed * delta;
+                if (moveLeft || moveRight) velocity.x += direction.x * speed * delta;
 
-    <div id="blocker">
-        <h1>WebCraft 3D</h1>
-        <p>PC: Dùng chuột & WASD | Mobile: Dùng phím ảo</p>
-        <button id="playBtn">CHƠI NGAY</button>
-    </div>
+                // Trích xuất góc nhìn hiện tại của Camera
+                const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+                euler.setFromQuaternion(camera.quaternion);
+                
+                const moveX = velocity.x * delta;
+                const moveZ = velocity.z * delta;
+                
+                // SỬA LẠI DẤU CỘNG Ở ĐÂY ĐỂ ĐI ĐÚNG HƯỚNG
+                camera.position.x += (moveX * Math.cos(euler.y) + moveZ * Math.sin(euler.y));
+                camera.position.z += (-moveX * Math.sin(euler.y) + moveZ * Math.cos(euler.y));
+                camera.position.y += (velocity.y * delta);
 
+                // Chạm đất
+                if (camera.position.y < 5) {
+                    velocity.y = 0;
+                    camera.position.y = 5;
+                    canJump = true;
+                }
+            }
     <!-- Phím ảo Mobile -->
     <div id="mobile-controls">
         <div id="btn-w" class="btn">W</div>
