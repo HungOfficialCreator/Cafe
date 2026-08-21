@@ -2,250 +2,298 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebCraft 3D - First Person</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WebCraft 3D - Sinh Tồn Đa Nền Tảng</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden; /* Ẩn thanh cuộn */
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #87CEEB; /* Màu nền dự phòng */
-        }
+        body { margin: 0; overflow: hidden; background-color: #87CEEB; font-family: sans-serif; touch-action: none; user-select: none; }
+        
+        /* Tâm ngắm */
+        #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 20px; pointer-events: none; text-shadow: 1px 1px 2px black; z-index: 10; }
+        
+        /* Màn hình chờ */
+        #blocker { position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 20; color: white; flex-direction: column; text-align: center; }
+        #playBtn { padding: 15px 30px; font-size: 1.5rem; background: #228B22; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 20px; }
+        
+        /* Thanh trạng thái UI */
+        #ui { position: absolute; top: 20px; left: 20px; z-index: 10; color: white; text-shadow: 1px 1px 2px black; font-weight: bold; pointer-events: none; }
+        .bar-bg { width: 150px; height: 15px; background: rgba(0,0,0,0.5); border: 2px solid #333; margin-bottom: 10px; border-radius: 4px; }
+        #hp-bar { width: 100%; height: 100%; background: #ff3333; transition: width 0.2s; }
+        #food-bar { width: 100%; height: 100%; background: #ffcc00; transition: width 0.2s; }
 
-        /* Dấu cộng tâm ngắm ở giữa màn hình */
-        #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 20px;
-            height: 20px;
-            transform: translate(-50%, -50%);
-            color: white;
-            font-size: 24px;
-            font-weight: 300;
-            text-align: center;
-            line-height: 20px;
-            pointer-events: none; /* Click xuyên qua */
-            text-shadow: 1px 1px 2px black;
-            z-index: 10;
-        }
-
-        /* Màn hình Menu / Hướng dẫn ban đầu */
-        #blocker {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 20;
-        }
-
-        #instructions {
-            text-align: center;
-            color: white;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 30px;
-            border-radius: 10px;
-            cursor: pointer;
-        }
-
-        #instructions h1 { font-size: 3rem; margin-top: 0; }
-        #instructions p { font-size: 1.2rem; }
+        /* Nút điều khiển Mobile (Mặc định ẩn) */
+        #mobile-controls { display: none; position: absolute; bottom: 20px; width: 100%; height: 150px; z-index: 15; pointer-events: none; }
+        .btn { pointer-events: auto; background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.5); border-radius: 50%; width: 50px; height: 50px; color: white; font-size: 20px; display: flex; justify-content: center; align-items: center; position: absolute; }
+        .btn:active { background: rgba(255,255,255,0.5); }
+        
+        /* Cụm di chuyển trái */
+        #btn-w { left: 80px; bottom: 80px; }
+        #btn-s { left: 80px; bottom: 20px; }
+        #btn-a { left: 20px; bottom: 20px; }
+        #btn-d { left: 140px; bottom: 20px; }
+        
+        /* Cụm hành động phải */
+        #btn-jump { right: 20px; bottom: 80px; width: 60px; height: 60px; font-size: 24px; }
+        #btn-break { right: 90px; bottom: 20px; width: 60px; height: 60px; font-size: 24px; background: rgba(255, 100, 100, 0.4); }
+        
+        #touch-look-zone { position: absolute; top: 0; right: 0; width: 50%; height: 100%; z-index: 12; }
     </style>
-
-    <!-- Tải thư viện Three.js và PointerLockControls để làm góc nhìn thứ nhất -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/PointerLockControls.js"></script>
 </head>
 <body>
 
-    <div id="crosshair">+</div>
+    <div id="crosshair">✚</div>
 
-    <div id="blocker">
-        <div id="instructions">
-            <h1>WebCraft 3D</h1>
-            <p>Click chuột vào đây để chơi</p>
-            <p><b>W, A, S, D</b> = Di chuyển | <b>Space</b> = Nhảy | <b>Chuột</b> = Xoay góc nhìn</p>
-            <p><i>(Nhấn ESC để thoát chế độ chuột)</i></p>
-        </div>
+    <div id="ui">
+        Máu: <div class="bar-bg"><div id="hp-bar"></div></div>
+        Thức ăn: <div class="bar-bg"><div id="food-bar"></div></div>
     </div>
 
-    <!-- Nơi chứa đồ họa 3D -->
+    <div id="blocker">
+        <h1>WebCraft 3D</h1>
+        <p>PC: Dùng chuột & WASD | Mobile: Dùng phím ảo</p>
+        <button id="playBtn">CHƠI NGAY</button>
+    </div>
+
+    <!-- Phím ảo Mobile -->
+    <div id="mobile-controls">
+        <div id="btn-w" class="btn">W</div>
+        <div id="btn-a" class="btn">A</div>
+        <div id="btn-s" class="btn">S</div>
+        <div id="btn-d" class="btn">D</div>
+        <div id="btn-jump" class="btn">▲</div>
+        <div id="btn-break" class="btn">🔨</div>
+    </div>
+    <div id="touch-look-zone"></div>
+
     <div id="gameContainer"></div>
 
     <script>
-        // --- 1. KHỞI TẠO BIẾN CƠ BẢN ---
         let camera, scene, renderer, controls;
-        const objects = []; // Mảng chứa các khối (cây cối, đất) để kiểm tra va chạm
+        let interactables = []; // Mảng chứa đồ vật có thể đập
         let raycaster;
+        let pig; // Con vật
 
-        // Biến di chuyển
-        let moveForward = false;
-        let moveBackward = false;
-        let moveLeft = false;
-        let moveRight = false;
-        let canJump = false;
+        // Chỉ số sinh tồn
+        let hp = 100, food = 100;
 
+        // Trạng thái di chuyển
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, canJump = false;
         let prevTime = performance.now();
         const velocity = new THREE.Vector3();
         const direction = new THREE.Vector3();
+        let isMobile = /Mobi|Android/i.test(navigator.userAgent);
 
-        // --- 2. BẮT ĐẦU THIẾT LẬP MÔI TRƯỜNG ---
         init();
         animate();
 
         function init() {
-            // Cài đặt Scene & Bầu trời
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87CEEB); /* Màu xanh da trời */
-            scene.fog = new THREE.Fog(0x87CEEB, 0, 750); /* Hiệu ứng sương mù ở xa */
+            scene.background = new THREE.Color(0x87CEEB);
+            scene.fog = new THREE.Fog(0x87CEEB, 20, 200);
 
-            // Cài đặt Camera (Góc nhìn của bạn)
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
-            camera.position.y = 10; // Chiều cao của nhân vật
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.y = 5;
 
             // Ánh sáng
-            const light = new THREE.HemisphereLight(0xeeeeff, 0x777788, 0.75);
-            light.position.set(0.5, 1, 0.75);
-            scene.add(light);
-
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
-            dirLight.position.set(20, 50, 20);
+            scene.add(new THREE.AmbientLight(0xaaaaaa));
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(50, 100, 50);
             scene.add(dirLight);
 
-            // --- 3. ĐIỀU KHIỂN CHUỘT (POINTER LOCK) ---
-            controls = new THREE.PointerLockControls(camera, document.body);
-            const blocker = document.getElementById('blocker');
-            const instructions = document.getElementById('instructions');
+            // --- TẠO MÔI TRƯỜNG ---
+            // 1. Mặt đất (Cỏ)
+            const floorGeo = new THREE.PlaneGeometry(500, 500);
+            floorGeo.rotateX(-Math.PI / 2);
+            const floorMat = new THREE.MeshLambertMaterial({ color: 0x4CAF50 });
+            scene.add(new THREE.Mesh(floorGeo, floorMat));
 
-            instructions.addEventListener('click', function () {
-                controls.lock(); // Khóa chuột vào giữa màn hình khi click
-            });
+            // 2. Con suối (Nước)
+            const waterGeo = new THREE.PlaneGeometry(500, 30);
+            waterGeo.rotateX(-Math.PI / 2);
+            const waterMat = new THREE.MeshLambertMaterial({ color: 0x1E90FF, transparent: true, opacity: 0.7 });
+            const water = new THREE.Mesh(waterGeo, waterMat);
+            water.position.set(0, 0.2, -30); // Cao hơn đất một chút để nổi lên
+            scene.add(water);
 
-            controls.addEventListener('lock', function () {
-                instructions.style.display = 'none';
-                blocker.style.display = 'none';
-            });
-
-            controls.addEventListener('unlock', function () {
-                blocker.style.display = 'flex';
-                instructions.style.display = 'block';
-            });
-            scene.add(controls.getObject());
-
-            // --- 4. BẮT SỰ KIỆN BÀN PHÍM ---
-            const onKeyDown = function (event) {
-                switch (event.code) {
-                    case 'ArrowUp':
-                    case 'KeyW': moveForward = true; break;
-                    case 'ArrowLeft':
-                    case 'KeyA': moveLeft = true; break;
-                    case 'ArrowDown':
-                    case 'KeyS': moveBackward = true; break;
-                    case 'ArrowRight':
-                    case 'KeyD': moveRight = true; break;
-                    case 'Space':
-                        if (canJump === true) velocity.y += 150; // Lực nhảy
-                        canJump = false;
-                        break;
-                }
-            };
-
-            const onKeyUp = function (event) {
-                switch (event.code) {
-                    case 'ArrowUp':
-                    case 'KeyW': moveForward = false; break;
-                    case 'ArrowLeft':
-                    case 'KeyA': moveLeft = false; break;
-                    case 'ArrowDown':
-                    case 'KeyS': moveBackward = false; break;
-                    case 'ArrowRight':
-                    case 'KeyD': moveRight = false; break;
-                }
-            };
-
-            document.addEventListener('keydown', onKeyDown);
-            document.addEventListener('keyup', onKeyUp);
-
-            // Xử lý va chạm
-            raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, - 1, 0), 0, 10);
-
-            // --- 5. TẠO THẾ GIỚI MÀU SẮC TƯƠNG TỰ MINECRAFT ---
+            // 3. Hàm tạo Cây cối
+            const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5C4033 });
+            const leavesMat = new THREE.MeshLambertMaterial({ color: 0x228B22 });
             
-            // Tạo mặt đất
-            const floorGeometry = new THREE.PlaneGeometry(2000, 2000, 100, 100);
-            floorGeometry.rotateX(- Math.PI / 2); // Xoay ngang mặt đất
-            const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 }); // Màu cỏ
-            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-            scene.add(floor);
+            function createTree(x, z) {
+                const trunk = new THREE.Mesh(new THREE.BoxGeometry(2, 6, 2), trunkMat);
+                trunk.position.set(x, 3, z);
+                scene.add(trunk);
+                interactables.push(trunk); // Có thể đập thân cây
 
-            // Tạo các khối (cây, đá) rải rác
-            const boxGeometry = new THREE.BoxGeometry(10, 10, 10);
-            const woodMaterial = new THREE.MeshLambertMaterial({ color: 0x5C4033 }); // Màu gỗ
-            
-            for (let i = 0; i < 200; i++) {
-                const box = new THREE.Mesh(boxGeometry, woodMaterial);
-                // Vị trí ngẫu nhiên
-                box.position.x = Math.floor(Math.random() * 40 - 20) * 10;
-                box.position.y = 5; // Nửa chiều cao khối để nằm ngay trên mặt đất
-                box.position.z = Math.floor(Math.random() * 40 - 20) * 10;
-                scene.add(box);
-                objects.push(box); // Đưa vào mảng để tính va chạm
+                const leaves = new THREE.Mesh(new THREE.BoxGeometry(8, 8, 8), leavesMat);
+                leaves.position.set(x, 10, z);
+                scene.add(leaves);
+                interactables.push(leaves); // Có thể đập lá
             }
 
-            // --- 6. CÀI ĐẶT RENDERER ---
+            // Rải cây ngẫu nhiên
+            for(let i=0; i<30; i++) {
+                let rx = Math.random() * 200 - 100;
+                let rz = Math.random() * 200 - 100;
+                if(rz > -15 && rz < -45) continue; // Tránh mọc cây giữa dòng suối
+                createTree(rx, rz);
+            }
+
+            // 4. Động vật (Con lợn hồng)
+            pig = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 3), new THREE.MeshLambertMaterial({ color: 0xFFC0CB }));
+            pig.position.set(0, 1, -10);
+            scene.add(pig);
+            interactables.push(pig); // Có thể tương tác với vật
+
+            // Khởi tạo Raycaster (Tia tương tác)
+            raycaster = new THREE.Raycaster();
+
+            // --- ĐIỀU KHIỂN CHUNG ---
             renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setPixelRatio(window.devicePixelRatio);
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.getElementById('gameContainer').appendChild(renderer.domElement);
+
+            controls = new THREE.PointerLockControls(camera, document.body);
+            const playBtn = document.getElementById('playBtn');
+            const blocker = document.getElementById('blocker');
+
+            playBtn.addEventListener('click', () => {
+                blocker.style.display = 'none';
+                if(!isMobile) controls.lock();
+                else {
+                    document.getElementById('mobile-controls').style.display = 'block';
+                    document.getElementById('touch-look-zone').style.display = 'block';
+                }
+            });
+
+            // --- SỰ KIỆN PC ---
+            document.addEventListener('keydown', e => {
+                if(e.code==='KeyW') moveForward=true; if(e.code==='KeyS') moveBackward=true;
+                if(e.code==='KeyA') moveLeft=true;    if(e.code==='KeyD') moveRight=true;
+                if(e.code==='Space' && canJump) { velocity.y += 30; canJump = false; }
+            });
+            document.addEventListener('keyup', e => {
+                if(e.code==='KeyW') moveForward=false; if(e.code==='KeyS') moveBackward=false;
+                if(e.code==='KeyA') moveLeft=false;    if(e.code==='KeyD') moveRight=false;
+            });
+            // Click chuột trái trên PC để đập
+            document.addEventListener('mousedown', (e) => {
+                if(controls.isLocked) breakBlock();
+            });
+
+            // --- SỰ KIỆN MOBILE ---
+            if(isMobile) {
+                const bindBtn = (id, actionDown, actionUp) => {
+                    const btn = document.getElementById(id);
+                    btn.addEventListener('touchstart', (e) => { e.preventDefault(); actionDown(); });
+                    btn.addEventListener('touchend', (e) => { e.preventDefault(); actionUp(); });
+                };
+                bindBtn('btn-w', () => moveForward=true, () => moveForward=false);
+                bindBtn('btn-s', () => moveBackward=true, () => moveBackward=false);
+                bindBtn('btn-a', () => moveLeft=true, () => moveLeft=false);
+                bindBtn('btn-d', () => moveRight=true, () => moveRight=false);
+                bindBtn('btn-jump', () => { if(canJump){ velocity.y += 30; canJump = false; }}, () => {});
+                
+                // Nút đập đồ trên Mobile
+                document.getElementById('btn-break').addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    breakBlock();
+                });
+
+                // Vuốt nửa phải màn hình để xoay Camera
+                let touchX, touchY;
+                const touchZone = document.getElementById('touch-look-zone');
+                touchZone.addEventListener('touchstart', e => {
+                    touchX = e.touches[0].pageX; touchY = e.touches[0].pageY;
+                });
+                touchZone.addEventListener('touchmove', e => {
+                    let dx = e.touches[0].pageX - touchX;
+                    let dy = e.touches[0].pageY - touchY;
+                    touchX = e.touches[0].pageX; touchY = e.touches[0].pageY;
+                    
+                    const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+                    euler.setFromQuaternion(camera.quaternion);
+                    euler.y -= dx * 0.005;
+                    euler.x -= dy * 0.005;
+                    euler.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, euler.x));
+                    camera.quaternion.setFromEuler(euler);
+                });
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        // --- HÀM ĐẬP PHÁ ---
+        function breakBlock() {
+            // Bắn một tia từ giữa màn hình (tâm ngắm) thẳng về phía trước
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            const intersects = raycaster.intersectObjects(interactables);
             
-            // Xử lý khi thu phóng cửa sổ
-            window.addEventListener('resize', onWindowResize);
+            // Nếu tia trúng vật thể và khoảng cách gần (< 15 đơn vị)
+            if (intersects.length > 0 && intersects[0].distance < 15) {
+                const target = intersects[0].object;
+                scene.remove(target); // Xóa khỏi đồ họa
+                interactables.splice(interactables.indexOf(target), 1); // Xóa khỏi mảng
+            }
         }
 
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        // --- 7. VÒNG LẶP XỬ LÝ CHUYỂN ĐỘNG & RENDER ---
+        // --- VÒNG LẶP GAME ---
         function animate() {
             requestAnimationFrame(animate);
-
             const time = performance.now();
+            const delta = (time - prevTime) / 1000;
 
-            if (controls.isLocked === true) {
-                // Tính toán thời gian giữa các khung hình (delta) giúp mượt mà
-                const delta = (time - prevTime) / 1000;
+            // 1. Xử lý Sinh tồn
+            if(document.getElementById('blocker').style.display === 'none') {
+                food -= 0.1 * delta;
+                if(food <= 0) { food = 0; hp -= 1 * delta; }
+                if(hp <= 0) { alert("Game Over! Bạn đã chết vì đói/mất máu."); location.reload(); }
+                
+                document.getElementById('hp-bar').style.width = hp + '%';
+                document.getElementById('food-bar').style.width = food + '%';
+            }
 
-                // Reset vận tốc cơ bản (ma sát)
+            // 2. Di chuyển thú vật (Lợn đi lòng vòng)
+            if(pig.parent) { // Nếu lợn chưa bị đập
+                pig.position.x += Math.sin(time * 0.001) * 0.05;
+                pig.rotation.y = Math.sin(time * 0.001);
+            }
+
+            // 3. Di chuyển người chơi
+            if (controls.isLocked || isMobile) {
                 velocity.x -= velocity.x * 10.0 * delta;
                 velocity.z -= velocity.z * 10.0 * delta;
-                velocity.y -= 500.0 * delta; // Trọng lực (kéo xuống đất)
+                velocity.y -= 80.0 * delta; // Trọng lực
 
-                // Tính toán hướng đi
                 direction.z = Number(moveForward) - Number(moveBackward);
                 direction.x = Number(moveRight) - Number(moveLeft);
-                direction.normalize(); // Đảm bảo đi chéo không bị nhanh hơn
+                direction.normalize();
 
-                // Gia tốc di chuyển
-                const moveSpeed = 400.0;
-                if (moveForward || moveBackward) velocity.z -= direction.z * moveSpeed * delta;
-                if (moveLeft || moveRight) velocity.x -= direction.x * moveSpeed * delta;
+                const speed = 150.0;
+                if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
+                if (moveLeft || moveRight) velocity.x -= direction.x * speed * delta;
 
-                // Di chuyển nhân vật
-                controls.moveRight(- velocity.x * delta);
-                controls.moveForward(- velocity.z * delta);
+                // Để di chuyển theo hướng camera, ta trích xuất góc quay Y
+                const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+                euler.setFromQuaternion(camera.quaternion);
+                
+                const moveX = velocity.x * delta;
+                const moveZ = velocity.z * delta;
+                
+                camera.position.x -= (moveX * Math.cos(euler.y) + moveZ * Math.sin(euler.y));
+                camera.position.z -= (-moveX * Math.sin(euler.y) + moveZ * Math.cos(euler.y));
+                camera.position.y += (velocity.y * delta);
 
-                // Xử lý trọng lực và giới hạn mặt đất
-                controls.getObject().position.y += (velocity.y * delta);
-                if (controls.getObject().position.y < 10) {
+                // Chạm đất
+                if (camera.position.y < 5) {
                     velocity.y = 0;
-                    controls.getObject().position.y = 10;
-                    canJump = true; // Chạm đất mới được nhảy tiếp
+                    camera.position.y = 5;
+                    canJump = true;
                 }
             }
 
