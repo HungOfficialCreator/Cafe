@@ -2,279 +2,377 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cube Dash - Web Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebCraft - Sinh Tồn 2D</title>
     <style>
         body {
             margin: 0;
             padding: 0;
-            background-color: #1a1a2e;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden; /* Ngăn chặn cuộn màn hình */
+            background-color: #87CEEB; /* Màu bầu trời */
+            overflow: hidden;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            touch-action: none; /* Ngăn trình duyệt zoom khi chạm */
+            user-select: none;
         }
 
         #gameContainer {
             position: relative;
+            width: 100vw;
+            height: 100vh;
         }
 
         canvas {
-            background-color: #16213e;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
-            border-bottom: 5px solid #0f3460;
             display: block;
         }
 
+        /* Giao diện người dùng (UI) */
         #ui {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
+            top: 20px;
+            left: 20px;
             color: white;
-            pointer-events: none; /* Để click xuyên qua UI xuống canvas */
+            text-shadow: 1px 1px 2px black;
+            pointer-events: none;
         }
 
-        h1 {
-            font-size: 3rem;
-            margin: 0;
-            text-shadow: 2px 2px 0px #e94560;
+        .bar-container {
+            width: 200px;
+            height: 20px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 2px solid #333;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            overflow: hidden;
         }
 
-        p {
-            font-size: 1.2rem;
+        #healthBar {
+            width: 100%;
+            height: 100%;
+            background-color: #ff3333;
+            transition: width 0.2s;
+        }
+
+        #hungerBar {
+            width: 100%;
+            height: 100%;
+            background-color: #ffcc00;
+            transition: width 0.2s;
+        }
+
+        #inventory {
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            border-radius: 5px;
+            display: inline-block;
             margin-top: 10px;
+            font-weight: bold;
         }
-
-        .hidden {
-            display: none !important;
+        
+        #deathScreen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            color: red;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
         }
+        
+        #deathScreen h1 { font-size: 5rem; margin: 0; }
+        #deathScreen p { color: white; font-size: 1.5rem; cursor: pointer; text-decoration: underline;}
     </style>
 </head>
 <body>
 
     <div id="gameContainer">
-        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        <canvas id="gameCanvas"></canvas>
         <div id="ui">
-            <h1 id="titleText">CUBE DASH</h1>
-            <p id="instructionText">Chạm vào màn hình hoặc bấm Space để nhảy</p>
+            <div>Máu (HP):</div>
+            <div class="bar-container"><div id="healthBar"></div></div>
+            <div>Thức ăn:</div>
+            <div class="bar-container"><div id="hungerBar"></div></div>
+            <div id="inventory">Gỗ: 0 | Đất: 0</div>
+        </div>
+        <div id="deathScreen">
+            <h1>BẠN ĐÃ CHẾT!</h1>
+            <p onclick="location.reload()">Bấm vào đây để Hồi Sinh</p>
         </div>
     </div>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const ui = document.getElementById('ui');
-        const titleText = document.getElementById('titleText');
-        const instructionText = document.getElementById('instructionText');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
 
-        // Điều chỉnh kích thước canvas cho phù hợp với điện thoại
-        if (window.innerWidth < 800) {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerWidth / 2; // Giữ tỷ lệ 2:1
-        }
+        const tileSize = 40; // Kích thước 1 khối block
 
-        // --- CÁC THÔNG SỐ GAME ---
-        let frames = 0;
-        let score = 0;
-        let gameSpeed = 6;
-        let isGameOver = false;
-        let isGameStarted = false;
-        let animationId;
-
-        // Trục Y của mặt đất
-        const groundY = canvas.height - 40;
-
-        // --- ĐỐI TƯỢNG NGƯỜI CHƠI (KHỐI LẬP PHƯƠNG) ---
-        const player = {
-            x: 50,
-            y: groundY - 40,
-            width: 40,
-            height: 40,
-            dy: 0,           // Vận tốc theo trục Y
-            jumpPower: -12,  // Lực nhảy (số âm là nhảy lên)
-            gravity: 0.6,    // Trọng lực kéo xuống
-            grounded: true,  // Kiểm tra xem có đang ở trên mặt đất không
-            color: '#00d2ff'
+        // --- CÁC LOẠI KHỐI (BLOCKS) ---
+        // 0: Không khí, 1: Đất, 2: Cỏ, 3: Thân gỗ, 4: Lá cây, 5: Nước
+        const colors = {
+            1: '#8B4513', // Đất
+            2: '#228B22', // Cỏ
+            3: '#5C4033', // Gỗ
+            4: '#006400', // Lá
+            5: 'rgba(65, 105, 225, 0.6)' // Nước (Trong suốt)
         };
 
-        // --- MẢNG CHƯỚNG NGẠI VẬT ---
-        let obstacles = [];
+        // --- TẠO BẢN ĐỒ BẰNG MẢNG 2 CHIỀU ---
+        const cols = Math.ceil(canvas.width / tileSize);
+        const rows = Math.ceil(canvas.height / tileSize);
+        let map = Array(rows).fill().map(() => Array(cols).fill(0));
 
-        // --- HÀM VẼ NGƯỜI CHƠI ---
-        function drawPlayer() {
-            ctx.fillStyle = player.color;
-            ctx.fillRect(player.x, player.y, player.width, player.height);
-            
-            // Vẽ viền cho khối
-            ctx.strokeStyle = 'white';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(player.x, player.y, player.width, player.height);
+        // Sinh địa hình cơ bản
+        const groundLevel = Math.floor(rows / 2);
+        for (let r = groundLevel; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                if (r === groundLevel) {
+                    // Tạo một hồ nước nhỏ ở giữa bản đồ
+                    if (c > cols/2 - 3 && c < cols/2 + 3) map[r][c] = 5; 
+                    else map[r][c] = 2; // Cỏ
+                } else if (map[r-1][c] === 5 && r === groundLevel + 1) {
+                    map[r][c] = 5; // Làm hồ nước sâu 2 block
+                } else {
+                    map[r][c] = 1; // Đất
+                }
+            }
         }
 
-        // --- HÀM XỬ LÝ VẬT LÝ NGƯỜI CHƠI ---
-        function updatePlayer() {
-            // Áp dụng trọng lực
-            player.y += player.dy;
+        // Sinh cây
+        function spawnTree(col) {
+            let baseR = groundLevel - 1;
+            map[baseR][col] = 3; map[baseR-1][col] = 3; map[baseR-2][col] = 3; // Thân
+            map[baseR-3][col] = 4; map[baseR-3][col-1] = 4; map[baseR-3][col+1] = 4; // Lá
+            map[baseR-4][col] = 4; // Chóp lá
+        }
+        spawnTree(5);
+        spawnTree(cols - 8);
+
+        // --- THÔNG SỐ NGƯỜI CHƠI ---
+        const player = {
+            x: 100, y: 100,
+            width: 30, height: 38,
+            vx: 0, vy: 0,
+            speed: 4, jumpPower: -10, gravity: 0.5,
+            hp: 100, hunger: 100,
+            highestY: 100, // Để tính sát thương rơi
+            inWater: false, grounded: false, dead: false,
+            inv: { wood: 0, dirt: 0 }
+        };
+
+        // --- ĐỘNG VẬT (CON LỢN) ---
+        const pig = {
+            x: 300, y: (groundLevel - 1) * tileSize + 10,
+            width: 30, height: 20,
+            vx: 1, color: '#FFC0CB'
+        };
+
+        // Bàn phím
+        const keys = { w: false, a: false, s: false, d: false, space: false };
+
+        window.addEventListener('keydown', (e) => {
+            let key = e.key.toLowerCase();
+            if (key === 'w' || key === ' ') keys.w = true;
+            if (key === 'a') keys.a = true;
+            if (key === 's') keys.s = true;
+            if (key === 'd') keys.d = true;
+        });
+
+        window.addEventListener('keyup', (e) => {
+            let key = e.key.toLowerCase();
+            if (key === 'w' || key === ' ') keys.w = false;
+            if (key === 'a') keys.a = false;
+            if (key === 's') keys.s = false;
+            if (key === 'd') keys.d = false;
+        });
+
+        // Click chuột để đập block
+        window.addEventListener('mousedown', (e) => {
+            let c = Math.floor(e.clientX / tileSize);
+            let r = Math.floor(e.clientY / tileSize);
             
-            if (player.y + player.height < groundY) {
-                player.dy += player.gravity; // Rơi xuống
-                player.grounded = false;
+            if (r >= 0 && r < rows && c >= 0 && c < cols) {
+                let block = map[r][c];
+                if (block !== 0 && block !== 5) {
+                    if (block === 3) player.inv.wood++;
+                    if (block === 1 || block === 2) player.inv.dirt++;
+                    map[r][c] = 0; // Xóa block (thành không khí)
+                    document.getElementById('inventory').innerText = `Gỗ: ${player.inv.wood} | Đất: ${player.inv.dirt}`;
+                }
+            }
+        });
+
+        // --- HÀM KIỂM TRA VA CHẠM VỚI BLOCK ---
+        function getCollidingBlocks(x, y, w, h) {
+            let blocks = [];
+            let startCol = Math.floor(x / tileSize);
+            let endCol = Math.floor((x + w) / tileSize);
+            let startRow = Math.floor(y / tileSize);
+            let endRow = Math.floor((y + h) / tileSize);
+
+            for (let r = startRow; r <= endRow; r++) {
+                for (let c = startCol; c <= endCol; c++) {
+                    if (r >= 0 && r < rows && c >= 0 && c < cols) {
+                        if (map[r][c] !== 0) {
+                            blocks.push({ r, c, type: map[r][c] });
+                        }
+                    }
+                }
+            }
+            return blocks;
+        }
+
+        // --- VÒNG LẶP CẬP NHẬT TRẠNG THÁI ---
+        function update() {
+            if (player.dead) return;
+
+            // 1. Giảm thức ăn theo thời gian
+            player.hunger -= 0.02;
+            if (player.hunger <= 0) {
+                player.hunger = 0;
+                player.hp -= 0.05; // Đói quá mất máu
+            }
+            
+            // Cập nhật UI
+            document.getElementById('healthBar').style.width = player.hp + '%';
+            document.getElementById('hungerBar').style.width = player.hunger + '%';
+            if (player.hp <= 0) die();
+
+            // 2. Di chuyển theo X
+            if (keys.a) player.vx = -player.speed;
+            else if (keys.d) player.vx = player.speed;
+            else player.vx = 0;
+
+            player.x += player.vx;
+            
+            // Va chạm ngang
+            let collsX = getCollidingBlocks(player.x, player.y, player.width, player.height);
+            collsX = collsX.filter(b => b.type !== 5); // Không kẹt bởi nước
+            if (collsX.length > 0) {
+                if (player.vx > 0) player.x = collsX[0].c * tileSize - player.width; // Đụng phải
+                else if (player.vx < 0) player.x = collsX[0].c * tileSize + tileSize; // Đụng trái
+            }
+
+            // Giới hạn biên bản đồ
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+
+            // 3. Di chuyển theo Y (Trọng lực & Nước)
+            let collsAll = getCollidingBlocks(player.x, player.y, player.width, player.height);
+            player.inWater = collsAll.some(b => b.type === 5);
+
+            if (player.inWater) {
+                player.vy += 0.1; // Bơi trọng lực yếu
+                if (player.vy > 2) player.vy = 2; // Rơi chậm trong nước
+                if (keys.w) player.vy = -3; // Bơi lên
+                if (keys.s) player.vy = 3; // Lặn
             } else {
-                player.dy = 0;
-                player.y = groundY - player.height; // Chạm đất
-                player.grounded = true;
+                player.vy += player.gravity;
             }
-        }
 
-        // --- HÀM ĐIỀU KHIỂN NHẢY ---
-        function jump() {
-            if (!isGameStarted) {
-                resetGame();
-                return;
+            player.y += player.vy;
+            let collsY = getCollidingBlocks(player.x, player.y, player.width, player.height);
+            collsY = collsY.filter(b => b.type !== 5);
+
+            player.grounded = false;
+            if (collsY.length > 0) {
+                if (player.vy > 0) { // Đang rơi xuống chạm đất
+                    player.y = collsY[0].r * tileSize - player.height;
+                    player.grounded = true;
+                    
+                    // Xử lý sát thương rơi (Fall damage)
+                    let fallDistance = (player.y - player.highestY) / tileSize;
+                    if (fallDistance > 5 && !player.inWater) {
+                        player.hp -= (fallDistance - 5) * 10; // Rơi cao hơn 5 block sẽ trừ máu
+                    }
+                    player.vy = 0;
+                } else if (player.vy < 0) { // Cụng đầu trần nhà
+                    player.y = collsY[0].r * tileSize + tileSize;
+                    player.vy = 0;
+                }
             }
-            if (isGameOver) {
-                resetGame();
-                return;
+
+            // Ghi nhớ điểm cao nhất để tính Fall Damage
+            if (player.grounded || player.inWater) {
+                player.highestY = player.y;
+            } else if (player.y < player.highestY) {
+                player.highestY = player.y;
             }
-            if (player.grounded) {
-                player.dy = player.jumpPower;
+
+            // Nhảy
+            if (keys.w && player.grounded && !player.inWater) {
+                player.vy = player.jumpPower;
                 player.grounded = false;
             }
-        }
 
-        // --- HÀM XỬ LÝ CHƯỚNG NGẠI VẬT ---
-        function handleObstacles() {
-            // Cứ sau một khoảng thời gian (frames) ngẫu nhiên thì sinh ra chướng ngại vật
-            if (frames % Math.floor(Math.random() * 60 + 60) === 0) {
-                // Tạo chướng ngại vật hình tam giác (gai)
-                obstacles.push({
-                    x: canvas.width,
-                    y: groundY,
-                    width: 30,
-                    height: 40,
-                    color: '#e94560'
-                });
-            }
-
-            for (let i = 0; i < obstacles.length; i++) {
-                let obs = obstacles[i];
-                obs.x -= gameSpeed; // Di chuyển sang trái
-
-                // Vẽ chướng ngại vật (Hình gai nhọn)
-                ctx.beginPath();
-                ctx.moveTo(obs.x, obs.y); // Góc dưới trái
-                ctx.lineTo(obs.x + obs.width / 2, obs.y - obs.height); // Đỉnh tam giác
-                ctx.lineTo(obs.x + obs.width, obs.y); // Góc dưới phải
-                ctx.fillStyle = obs.color;
-                ctx.fill();
-                ctx.closePath();
-
-                // Thuật toán kiểm tra va chạm (Axis-Aligned Bounding Box)
-                // Vì gai là hình tam giác, nhưng để cơ bản ta dùng hộp chữ nhật cho dễ xử lý
-                if (
-                    player.x < obs.x + obs.width &&
-                    player.x + player.width > obs.x &&
-                    player.y < obs.y &&
-                    player.y + player.height > obs.y - obs.height + 10 // +10 để du di một chút ở đỉnh gai
-                ) {
-                    gameOver();
-                }
-
-                // Xóa chướng ngại vật khi ra khỏi màn hình để giải phóng bộ nhớ
-                if (obs.x + obs.width < 0) {
-                    obstacles.splice(i, 1);
-                    i--;
-                    score += 10; // Cứ vượt qua 1 gai là cộng 10 điểm
-                }
+            // 4. Cập nhật Động vật (Con lợn đi qua lại)
+            pig.x += pig.vx;
+            let pigColls = getCollidingBlocks(pig.x, pig.y, pig.width, pig.height);
+            pigColls = pigColls.filter(b => b.type !== 5);
+            if (pigColls.length > 0 || pig.x < 0 || pig.x > canvas.width) {
+                pig.vx *= -1; // Đụng tường thì quay đầu
             }
         }
 
-        // --- VẼ MẶT ĐẤT ---
-        function drawGround() {
-            ctx.fillStyle = '#0f3460';
-            ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
-            
-            // Vẽ đường line sát đất
-            ctx.fillStyle = 'white';
-            ctx.fillRect(0, groundY, canvas.width, 2);
+        // Xử lý khi chết
+        function die() {
+            player.dead = true;
+            document.getElementById('deathScreen').style.display = 'flex';
         }
 
-        // --- VẼ ĐIỂM SỐ ---
-        function drawScore() {
-            ctx.fillStyle = 'white';
-            ctx.font = '20px Arial';
-            ctx.fillText('Điểm: ' + score, 20, 30);
-        }
-
-        // --- VÒNG LẶP GAME (GAME LOOP) ---
-        function animate() {
-            if (isGameOver || !isGameStarted) return;
-
-            // Xóa màn hình cũ
+        // --- VÒNG LẶP VẼ ĐỒ HỌA ---
+        function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            drawGround();
-            updatePlayer();
-            drawPlayer();
-            handleObstacles();
-            drawScore();
+            // Vẽ Mặt trời
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(canvas.width - 100, 100, 40, 0, Math.PI * 2);
+            ctx.fill();
 
-            // Tăng tốc độ game từ từ để khó hơn
-            if (frames % 500 === 0 && gameSpeed < 15) {
-                gameSpeed += 0.5;
+            // Vẽ Bản đồ (Map)
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    let block = map[r][c];
+                    if (block !== 0) {
+                        ctx.fillStyle = colors[block];
+                        ctx.fillRect(c * tileSize, r * tileSize, tileSize, tileSize);
+                        // Vẽ viền cho các block cứng
+                        if (block !== 5) {
+                            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                            ctx.strokeRect(c * tileSize, r * tileSize, tileSize, tileSize);
+                        }
+                    }
+                }
             }
 
-            frames++;
-            animationId = requestAnimationFrame(animate);
+            // Vẽ con lợn
+            ctx.fillStyle = pig.color;
+            ctx.fillRect(pig.x, pig.y, pig.width, pig.height);
+            // Vẽ mắt lợn
+            ctx.fillStyle = 'black';
+            ctx.fillRect(pig.vx > 0 ? pig.x + 20 : pig.x + 5, pig.y + 5, 4, 4);
+
+            // Vẽ Người chơi
+            ctx.fillStyle = '#FFdead'; // Màu da
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            ctx.fillStyle = '#1E90FF'; // Áo xanh
+            ctx.fillRect(player.x, player.y + 15, player.width, 20);
+            ctx.fillStyle = 'black'; // Mắt
+            if (keys.d || (!keys.a && !keys.d)) ctx.fillRect(player.x + 20, player.y + 5, 4, 4); // Nhìn phải
+            else ctx.fillRect(player.x + 5, player.y + 5, 4, 4); // Nhìn trái
+
+            requestAnimationFrame(gameLoop);
         }
 
-        // --- TRẠNG THÁI GAME ---
-        function gameOver() {
-            isGameOver = true;
-            ui.classList.remove('hidden');
-            titleText.innerText = "GAME OVER";
-            titleText.style.color = "#e94560";
-            instructionText.innerText = "Điểm của bạn: " + score + "\nChạm để chơi lại";
+        function gameLoop() {
+            update();
+            draw();
         }
 
-        function resetGame() {
-            player.y = groundY - player.height;
-            player.dy = 0;
-            obstacles = [];
-            score = 0;
-            frames = 0;
-            gameSpeed = 6;
-            isGameOver = false;
-            isGameStarted = true;
-            ui.classList.add('hidden');
-            
-            cancelAnimationFrame(animationId);
-            animate();
-        }
-
-        // --- LẮNG NGHE SỰ KIỆN TƯƠNG TÁC ---
-        // Nhấn chuột vào màn hình
-        window.addEventListener('mousedown', jump);
-        // Chạm vào màn hình điện thoại
-        window.addEventListener('touchstart', (e) => {
-            e.preventDefault(); // Ngăn cuộn trang
-            jump();
-        });
-        // Nhấn phím Space
-        window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
-                jump();
-            }
-        });
-
-        // Vẽ màn hình chờ ban đầu
-        drawGround();
-        drawPlayer();
+        // Bắt đầu game
+        gameLoop();
     </script>
 </body>
 </html>
