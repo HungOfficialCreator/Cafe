@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumina Coffee - Khơi Nguồn Cảm Hứng</title>
+    <style>
+        /* Cài đặt cơ bản */
+        :root {
+            --primary-color: #6F4E37; /* Màu nâu cà phê */
+            --accent-color: #d35400; /* Màu cam nổi bật cho nút bấm */
+            --text-color: #333;
+            --bg-color: #fdfbf7; /* Màu kem nhạt */
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            line-height: 1.6;
+        }
+
+        /* Thanh điều hướng */
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 { margin: 0; font-size: 1.5rem; }
+        
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin-left: 20px;
+            font-weight: 500;
+        }
+
+        /* Banner chính (Hero Section) */
+        .hero {
+            background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), 
+                        url('https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1200&q=80') center/cover;
+            height: 70vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: white;
+            padding: 0 20px;
+        }
+
+        .hero h2 { font-size: 3rem; margin-bottom: 10px; }
+        .hero p { font-size: 1.2rem; max-width: 600px; margin-bottom: 20px; }
+
+        .btn {
+            display: inline-block;
+            background-color: var(--accent-color);
+            color: white;
+            padding: 12px 25px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: background 0.3s ease;
+        }
+
+        .btn:hover { background-color: #e67e22; }
+
+        /* Khung chứa nội dung chung */
+        .container {
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 0 20px;
+            text-align: center;
+        }
+
+        /* Phần Ưu đãi (Promotions) */
+        .promotions {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 30px;
+        }
+
+        .promo-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            padding: 20px;
+            width: 300px;
+            border-top: 5px solid var(--primary-color);
+        }
+
+        .promo-card h3 { color: var(--accent-color); }
+
+        /* Chân trang (Footer) */
+        footer {
+            background-color: #2c1e16;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            margin-top: 50px;
+        }
+
+        /* Đáp ứng màn hình nhỏ (Mobile) */
+        @media (max-width: 768px) {
+            header { flex-direction: column; text-align: center; }
+            nav { margin-top: 15px; }
+            nav a { margin: 0 10px; }
+            .hero h2 { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Thanh Điều Hướng -->
+    <header>
+        <h1>Lumina Coffee</h1>
+        <nav>
+            <a href="#about">Về Chúng Tôi</a>
+            <a href="#promo">Ưu Đãi</a>
+            <a href="#contact">Liên Hệ</a>
+        </nav>
+    </header>
+
+    <!-- Banner Quảng Bá -->
+    <section class="hero">
+        <h2>Đánh Thức Mọi Giác Quan</h2>
+        <p>Không gian cà phê hiện đại, yên tĩnh cùng hương vị hạt Arabica rang mộc nguyên bản. Nơi lý tưởng để chạy deadline hoặc hò hẹn.</p>
+        <a href="#promo" class="btn">Nhận Mã Giảm Giá Ngay</a>
+    </section>
+
+    <!-- Giới Thiệu -->
+    <section id="about" class="container">
+        <h2 style="color: var(--primary-color);">Góc Nhỏ Của Bạn</h2>
+        <p>Tọa lạc tại trung tâm thành phố, Lumina Coffee không chỉ bán cà phê, chúng tôi mang đến một trải nghiệm. Với wifi tốc độ cao, ổ cắm mọi bàn và không gian xanh mát, đây là trạm dừng chân lý tưởng của bạn.</p>
+    </section>
+
+    <!-- Phần Ưu Đãi Quảng Bá -->
+    <section id="promo" class="container">
+        <h2 style="color: var(--primary-color);">🔥 Chương Trình Đặc Quyền Tuần Này</h2>
+        <div class="promotions">
+            <div class="promo-card">
+                <h3>Thứ 3 Vui Vẻ</h3>
+                <p>Mua 1 tặng 1 cho tất cả các dòng cà phê pha máy từ 8:00 đến 12:00.</p>
+                <strong>Mã: T3VUI</strong>
+            </div>
+            <div class="promo-card">
+                <h3>Sinh Viên Ưu Tú</h3>
+                <p>Giảm ngay 20% tổng hóa đơn khi mang thẻ sinh viên (Áp dụng tất cả các ngày).</p>
+                <strong>Không cần mã</strong>
+            </div>
+            <div class="promo-card">
+                <h3>Combo Sáng Năng Lượng</h3>
+                <p>1 Cà phê đen + 1 Bánh sừng trâu chỉ với 49.000đ (Tiết kiệm 30%).</p>
+                <strong>Mã: MORNING49</strong>
+            </div>
+        </div>
+    </section>
+
+    <!-- Chân trang / Liên hệ -->
+    <footer id="contact">
+        <h3>Lumina Coffee</h3>
+        <p>📍 Địa chỉ: 123 Đường Sáng Tạo, Quận 1, TP. HCM</p>
+        <p>📞 Hotline: 0123 456 789</p>
+        <p>Giờ mở cửa: 7:00 - 22:30 hàng ngày</p>
+        <p style="margin-top: 20px; font-size: 0.9rem; color: #aaa;">© 2026 Lumina Coffee. All rights reserved.</p>
+    </footer>
+
+</body>
+</html>
